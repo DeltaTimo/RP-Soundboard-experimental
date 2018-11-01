@@ -1,7 +1,7 @@
 // src/main.cpp
 //----------------------------------
 // RP Soundboard Source Code
-// Copyright (c) 2015 Marius Graefe
+// Copyright (c) 2018 Marius Graefe
 // All rights reserved
 // Contact: rp_soundboard@mgraefe.de
 //----------------------------------
@@ -101,6 +101,13 @@ int sb_playFile(const SoundInfo &sound)
 	if (activeServerId == 0)
 		return 2;
 	return sampler->playFile(sound) ? 0 : 1;
+}
+
+int sb_playFilePath(std::string path) {
+	QString str = QString::fromStdString(path);
+	SoundInfo sinfo = SoundInfo::SoundInfo();
+	sinfo.filename = str.trimmed();
+	return sb_playFile(sinfo);
 }
 
 

@@ -1,7 +1,7 @@
 // src/main.h
 //----------------------------------
 // RP Soundboard Source Code
-// Copyright (c) 2015 Marius Graefe
+// Copyright (c) 2018 Marius Graefe
 // All rights reserved
 // Contact: rp_soundboard@mgraefe.de
 //----------------------------------
@@ -9,14 +9,15 @@
 
 
 #pragma once
-#ifndef rpsbsrc__device_H__
-#define rpsbsrc__device_H__
+#ifndef rpsbsrc__main_H__
+#define rpsbsrc__main_H__
 
 #include "common.h"
 
 #ifdef __cplusplus
 class SoundInfo;
 int sb_playFile(const SoundInfo &sound);
+int sb_playFilePath(std::string path);
 
 class Sampler;
 Sampler *sb_getSampler();
