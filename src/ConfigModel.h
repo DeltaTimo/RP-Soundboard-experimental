@@ -1,7 +1,7 @@
 // src/ConfigModel.h
 //----------------------------------
 // RP Soundboard Source Code
-// Copyright (c) 2015 Marius Graefe
+// Copyright (c) 2018 Marius Graefe
 // All rights reserved
 // Contact: rp_soundboard@mgraefe.de
 //----------------------------------
@@ -37,6 +37,8 @@ public:
 		NOTIFY_SET_SHOW_HOTKEYS_ON_BUTTONS,
 		NOTIFY_SET_HOTKEYS_ENABLED,
 		NOTIFY_SET_NEXT_UPDATE_CHECK,
+		NOTIFY_SET_UDPSERVER_ENABLED,
+		NOTIFY_SET_UDPSERVER_ONLYLOCAL
 	};
 
 	class Observer
@@ -74,6 +76,12 @@ public:
 
 	inline bool getPlaybackLocal() const { return m_playbackLocal; }
 	void setPlaybackLocal(bool val);
+
+	inline bool getUDPServerEnabled() const { return m_udpServerEnabled; }
+	void setUDPServerEnabled(bool val);
+
+	inline bool getUDPServerOnlyLocal() const { return m_udpServerOnlyLocal; }
+	void setUDPServerOnlyLocal(bool val);
 	
 	inline bool getMuteMyselfDuringPb() const { return m_muteMyselfDuringPb; }
 	void setMuteMyselfDuringPb(bool val);
@@ -135,6 +143,9 @@ private:
 	bool m_hotkeysEnabled;
 
 	uint m_nextUpdateCheck;
+
+	bool m_udpServerEnabled;
+	bool m_udpServerOnlyLocal;
 };
 
 #endif // rpsbsrc__ConfigModel_H__

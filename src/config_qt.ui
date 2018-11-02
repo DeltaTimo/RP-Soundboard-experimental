@@ -180,6 +180,12 @@
    </item>
    <item>
     <widget class="QWidget" name="settingsWidget" native="true">
+     <property name="minimumSize">
+      <size>
+       <width>0</width>
+       <height>0</height>
+      </size>
+     </property>
      <layout class="QHBoxLayout" name="horizontalLayout">
       <property name="leftMargin">
        <number>15</number>
@@ -286,6 +292,23 @@
          <widget class="QCheckBox" name="cb_mute_myself">
           <property name="text">
            <string>Mute myself during playback</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="cb_udpserver_enabled">
+          <property name="text">
+           <string>Enable UDP Server (Port 35810)</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QCheckBox" name="cb_udpserver_onlylocal">
+          <property name="text">
+           <string>UDP: Allow only requests from this PC</string>
+          </property>
+          <property name="checked">
+           <bool>true</bool>
           </property>
          </widget>
         </item>

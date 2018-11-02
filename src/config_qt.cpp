@@ -1,7 +1,7 @@
 // src/config_qt.cpp
 //----------------------------------
 // RP Soundboard Source Code
-// Copyright (c) 2015 Marius Graefe
+// Copyright (c) 2018 Marius Graefe
 // All rights reserved
 // Contact: rp_soundboard@mgraefe.de
 //----------------------------------
@@ -110,6 +110,8 @@ ConfigQt::ConfigQt( ConfigModel *model, QWidget *parent /*= 0*/ ) :
 	connect(ui->cb_mute_myself, SIGNAL(clicked(bool)), this, SLOT(onUpdateMuteMyself(bool)));
 	connect(ui->cb_show_hotkeys_on_buttons, SIGNAL(clicked(bool)), this, SLOT(onUpdateShowHotkeysOnButtons(bool)));
 	connect(ui->cb_disable_hotkeys, SIGNAL(clicked(bool)), this, SLOT(onUpdateHotkeysDisabled(bool)));
+	connect(ui->cb_udpserver_enabled, SIGNAL(clicked(bool)), this, SLOT(onUpdateUDPServer(bool)));
+	connect(ui->cb_udpserver_onlylocal, SIGNAL(clicked(bool)), this, SLOT(onUpdateUDPOnlyLocal(bool)));
 	connect(ui->filterEdit, SIGNAL(textChanged(const QString&)), this, SLOT(onFilterEditTextChanged(const QString&)));
 	connect(ui->cb_mute_locally, &QCheckBox::customContextMenuRequested,
 		[this](const QPoint &point) {this->showSetHotkeyMenu(HOTKEY_MUTE_ON_MY_CLIENT, ui->cb_mute_locally->mapToGlobal(point));});
@@ -262,6 +264,24 @@ void ConfigQt::onUpdateVolume(int val)
 void ConfigQt::onUpdateMuteLocally(bool val)
 {
 	m_model->setPlaybackLocal(!val);
+}
+
+
+//---------------------------------------------------------------
+// Purpose: Handle enabling/disabling UDP Server.
+//---------------------------------------------------------------
+void ConfigQt::onUpdateUDPServer(bool val)
+{
+	m_model->setUDPServerEnabled(val);
+}
+
+
+//---------------------------------------------------------------
+// Purpose: Handle allowing/disallowing remote UDP Server packets.
+//---------------------------------------------------------------
+void ConfigQt::onUpdateUDPOnlyLocal(bool val)
+{
+	m_model->setUDPServerOnlyLocal(val);
 }
 
 
@@ -1014,6 +1034,14 @@ void ConfigQt::ModelObserver::notify(ConfigModel &model, ConfigModel::notificati
 	case ConfigModel::NOTIFY_SET_MUTE_MYSELF_DURING_PB:
 		if (p.ui->cb_mute_myself->isChecked() != model.getMuteMyselfDuringPb())
 			p.ui->cb_mute_myself->setChecked(model.getMuteMyselfDuringPb());
+		break;
+	case ConfigModel::NOTIFY_SET_UDPSERVER_ENABLED:
+		if (p.ui->cb_udpserver_enabled->isChecked() != model.getUDPServerEnabled())
+			p.ui->cb_udpserver_enabled->setChecked(model.getUDPServerEnabled());
+		break;
+	case ConfigModel::NOTIFY_SET_UDPSERVER_ONLYLOCAL:
+		if (p.ui->cb_udpserver_onlylocal->isChecked() != model.getUDPServerOnlyLocal())
+			p.ui->cb_udpserver_onlylocal->setChecked(model.getUDPServerOnlyLocal());
 		break;
 	case ConfigModel::NOTIFY_SET_WINDOW_SIZE:
 		{

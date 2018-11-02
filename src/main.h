@@ -14,10 +14,41 @@
 
 #include "common.h"
 
+//#pragma comment (lib, "Ws2_32.lib")
+
+//#define NOMINMAX
+//#include <WinSock2.h>
+//#define _WINSOCK2API_
+//#define _WINSOCKAPI_
+
+//#include <atomic>
+
 #ifdef __cplusplus
 class SoundInfo;
 int sb_playFile(const SoundInfo &sound);
 int sb_playFilePath(std::string path);
+
+// UDP Server
+
+#define SOCKET_BUFLEN 512  //Max length of buffer
+#define SOCKET_PORT 35810  //The port on which to listen for incoming data. This is also set in the config dialog, so don't forget to change that as well.
+
+//bool socketInitialized;
+void sb_enableUDPServer(bool enable);
+void sb_setUDPServerOnlyLocal(bool onlyLocal);
+void sb_startServer();
+bool sb_tryInitializeSocket();
+void sb_stopServer();
+void sb_killSocket();
+
+//WSADATA wsaData;
+//HANDLE serverHandle;
+//std::atomic<SOCKET> serverSocket;
+//DWORD WINAPI ServerThread(LPVOID lpParam);
+//std::atomic<bool> shutdownServer;
+//static std::atomic<bool> serverOnlyLocal;
+
+// UDP Server End
 
 class Sampler;
 Sampler *sb_getSampler();

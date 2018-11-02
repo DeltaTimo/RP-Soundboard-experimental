@@ -1,7 +1,7 @@
 // src/ConfigModel.cpp
 //----------------------------------
 // RP Soundboard Source Code
-// Copyright (c) 2015 Marius Graefe
+// Copyright (c) 2018 Marius Graefe
 // All rights reserved
 // Contact: rp_soundboard@mgraefe.de
 //----------------------------------
@@ -40,6 +40,9 @@ ConfigModel::ConfigModel()
 
     m_activeConfig = 0;
 	m_nextUpdateCheck = 0;
+
+	m_udpServerEnabled = false;
+	m_udpServerOnlyLocal = true;
 }
 
 
@@ -75,6 +78,8 @@ void ConfigModel::readConfig(const QString &file)
 	m_showHotkeysOnButtons = settings.value("show_hotkeys_on_buttons", false).toBool();
 	m_hotkeysEnabled = settings.value("hotkeys_enabled", true).toBool();
 	m_nextUpdateCheck = settings.value("next_update_check", 0).toUInt();
+	m_udpServerEnabled = settings.value("udpserver_enabled", false).toBool();
+	m_udpServerOnlyLocal = settings.value("udpserver_onlylocal", true).toBool();
 
 	notifyAllEvents();
 }
@@ -104,6 +109,8 @@ void ConfigModel::writeConfig(const QString &file)
     settings.setValue("show_hotkeys_on_buttons", m_showHotkeysOnButtons);
 	settings.setValue("hotkeys_enabled", m_hotkeysEnabled);
 	settings.setValue("next_update_check", m_nextUpdateCheck);
+	settings.setValue("udpserver_enabled", m_udpServerEnabled);
+	settings.setValue("udpserver_onlylocal", m_udpServerOnlyLocal);
 
 	for (int i = 0; i < NUM_CONFIGS; i++)
 		writeConfiguration(settings, i == 0 ? QString("files") : QString("files%1").arg(i + 1), m_sounds[i]);
@@ -301,6 +308,28 @@ void ConfigModel::setPlaybackLocal( bool val )
 
 
 //---------------------------------------------------------------
+// Purpose: Save and notify of config change to enable/disable UDP Server.
+//---------------------------------------------------------------
+void ConfigModel::setUDPServerEnabled(bool val)
+{
+	m_udpServerEnabled = val;
+	writeConfig();
+	notify(NOTIFY_SET_UDPSERVER_ENABLED, val ? 1 : 0);
+}
+
+
+//---------------------------------------------------------------
+// Purpose: Save and notify of config change to allow/disallow remote connections.
+//---------------------------------------------------------------
+void ConfigModel::setUDPServerOnlyLocal(bool val)
+{
+	m_udpServerOnlyLocal = val;
+	writeConfig();
+	notify(NOTIFY_SET_UDPSERVER_ONLYLOCAL, val ? 1 : 0);
+}
+
+
+//---------------------------------------------------------------
 // Purpose: 
 //---------------------------------------------------------------
 void ConfigModel::setMuteMyselfDuringPb(bool val)
@@ -468,6 +497,8 @@ void ConfigModel::notifyAllEvents()
 	notify(NOTIFY_SET_BUBBLE_COLS_BUILD, m_bubbleColsBuild);
 	notify(NOTIFY_SET_SHOW_HOTKEYS_ON_BUTTONS, m_showHotkeysOnButtons);
 	notify(NOTIFY_SET_HOTKEYS_ENABLED, m_hotkeysEnabled);
+	notify(NOTIFY_SET_UDPSERVER_ENABLED, m_udpServerEnabled);
+	notify(NOTIFY_SET_UDPSERVER_ONLYLOCAL, m_udpServerOnlyLocal);
 }
 
 

@@ -1,7 +1,7 @@
 // src/config_qt.h
 //----------------------------------
 // RP Soundboard Source Code
-// Copyright (c) 2015 Marius Graefe
+// Copyright (c) 2018 Marius Graefe
 // All rights reserved
 // Contact: rp_soundboard@mgraefe.de
 //----------------------------------
@@ -66,6 +66,8 @@ private slots:
 	void onUpdateCols(int val);
 	void onUpdateRows(int val);
 	void onUpdateMuteMyself(bool val);
+	void onUpdateUDPServer(bool val);
+	void onUpdateUDPOnlyLocal(bool val);
 	void showButtonContextMenu(const QPoint &point);
 	void onStopBubbleFinished();
 	void onButtonBubbleFinished();

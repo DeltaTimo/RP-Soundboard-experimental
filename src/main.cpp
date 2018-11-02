@@ -6,6 +6,14 @@
 // Contact: rp_soundboard@mgraefe.de
 //----------------------------------
 
+#pragma comment (lib, "Ws2_32.lib")
+
+#define NOMINMAX
+#include <WinSock2.h>
+#define _WINSOCK2API_
+#define _WINSOCKAPI_
+
+#include <atomic>
 
 #include "common.h"
 
@@ -24,6 +32,7 @@
 #include <QtCore/QString>
 
 #include "main.h"
+
 #include "ts3log.h"
 #include "inputfile.h"
 #include "samples.h"
@@ -34,6 +43,8 @@
 #include "SoundInfo.h"
 #include "TalkStateManager.h"
 #include "SpeechBubble.h"
+
+#include <algorithm>
 
 class ModelObserver_Prog : public ConfigModel::Observer
 {
@@ -56,6 +67,127 @@ UpdateChecker *updateChecker = NULL;
 std::map<uint64, int> connectionStatusMap;
 typedef std::lock_guard<std::mutex> Lock;
 
+// UDP Server
+
+WSADATA wsaData;
+HANDLE serverHandle;
+std::atomic<SOCKET> serverSocket;
+DWORD WINAPI ServerThread(LPVOID lpParam);
+static std::atomic<bool> shutdownServer = false;
+
+bool socketInitialized = false;
+static std::atomic<bool> serverOnlyLocal = true;
+
+void sb_startServer() {
+	if (!sb_tryInitializeSocket()) return;
+	if (serverHandle == NULL) {
+		if (serverSocket) closesocket(serverSocket);
+		shutdownServer = false;
+		serverHandle = CreateThread(NULL, 0, ServerThread, NULL, 0, NULL);
+	}
+}
+
+bool sb_tryInitializeSocket() {
+	if (socketInitialized) return true;
+	socketInitialized = WSAStartup(MAKEWORD(2, 0), &wsaData) == 0;
+	return socketInitialized;
+}
+
+void sb_stopServer() {
+	if (!socketInitialized || serverHandle == NULL) return;
+
+	shutdownServer = true;
+
+	DWORD threadResult = WaitForSingleObject(serverHandle, 250);
+	if (threadResult == WAIT_TIMEOUT) {
+		TerminateThread(serverHandle, 0);
+	}
+
+	if (serverSocket) {
+		closesocket(serverSocket);
+	}
+
+	shutdownServer = false;
+	serverSocket = NULL;
+	serverHandle = NULL;
+}
+
+void sb_killSocket() {
+	sb_stopServer();
+
+	WSACleanup();
+
+	socketInitialized = false;
+}
+
+DWORD WINAPI ServerThread(LPVOID lpParam) {
+	struct sockaddr_in server, si_other;
+	int slen, recv_len;
+	char buf[SOCKET_BUFLEN];
+	//wsaData was already initialized.
+
+	slen = sizeof(si_other);
+
+	if ((serverSocket = socket(AF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET) {
+		return EXIT_FAILURE;
+	}
+
+	server.sin_family = AF_INET;
+	server.sin_addr.s_addr = INADDR_ANY;
+	server.sin_port = htons(SOCKET_PORT);
+
+	if (bind((SOCKET)serverSocket, (sockaddr*)&server, sizeof(server)) == SOCKET_ERROR) {
+		return EXIT_FAILURE;
+	}
+
+	while (!shutdownServer) {
+		memset(buf, '\0', SOCKET_BUFLEN);
+
+		if ((recv_len = recvfrom(serverSocket, buf, SOCKET_BUFLEN, 0, (sockaddr*)&si_other, &slen)) == SOCKET_ERROR) {
+		}
+		else {
+			std::string address(inet_ntoa(si_other.sin_addr));
+			// Ignore foreign addresses if only listening to local packets.
+			if (serverOnlyLocal && !(address.compare("127.0.0.1") == 0 || address.compare("localhost") == 0)) continue;
+			std::string command(buf);
+			std::string lowered(command);
+			std::transform(lowered.begin(), lowered.end(), lowered.begin(), ::tolower);
+
+			auto commandLength = command.length();
+
+			if (commandLength > 5 && lowered.substr(0, 5).compare("play ") == 0) {
+				// Try playing path
+				std::string path(command.substr(5));
+				sb_playFilePath(path);
+			}
+			else if (commandLength >= 4 && commandLength <= 5 && lowered.substr(0, 4).compare("stop") == 0) {
+				// Stop playback
+				sb_stopPlayback();
+			}
+			else if (commandLength >= 9 && commandLength <= 10 && lowered.substr(0, 9).compare("playpause") == 0) {
+				if (sampler->getState() == Sampler::ePLAYING)
+					sb_pauseSound();
+				else if (sampler->getState() == Sampler::ePAUSED)
+					sb_unpauseSound();
+			}
+			else if (commandLength >= 5 && commandLength <= 6 && lowered.substr(0, 5).compare("pause") == 0) {
+				sb_pauseSound();
+			}
+			else if (commandLength >= 7 && commandLength <= 8 && lowered.substr(0, 7).compare("unpause") == 0) {
+				sb_unpauseSound();
+			}
+			else if (commandLength > 7 && lowered.substr(0, 6).compare("button") == 0) {
+				auto buttonNameOrId = command.substr(7).c_str();
+				sb_playButtonEx(buttonNameOrId);
+			}
+		}
+	}
+
+	return EXIT_SUCCESS;
+}
+
+// UDP Server end
+
 
 void ModelObserver_Prog::notify(ConfigModel &model, ConfigModel::notifications_e what, int data)
 {
@@ -69,6 +201,12 @@ void ModelObserver_Prog::notify(ConfigModel &model, ConfigModel::notifications_e
 		break;
 	case ConfigModel::NOTIFY_SET_MUTE_MYSELF_DURING_PB:
 		sampler->setMuteMyself(model.getMuteMyselfDuringPb());
+	case ConfigModel::NOTIFY_SET_UDPSERVER_ENABLED:
+		sb_enableUDPServer(data != 0);
+		break;
+	case ConfigModel::NOTIFY_SET_UDPSERVER_ONLYLOCAL:
+		sb_setUDPServerOnlyLocal(data != 0);
+		break;
 	default:
 		break;
 	}
@@ -110,6 +248,20 @@ int sb_playFilePath(std::string path) {
 	return sb_playFile(sinfo);
 }
 
+void sb_enableUDPServer(bool enable) {
+	// Abort if we got an error initializing Windows Sockets.
+	// TODO: Think of a way to tell the user about this. Disable the checkboxes, something like that.
+	if (enable) {
+		sb_startServer();
+	}
+	else {
+		sb_stopServer();
+	}
+}
+
+void sb_setUDPServerOnlyLocal(bool onlyLocal) {
+	serverOnlyLocal = onlyLocal;
+}
 
 Sampler *sb_getSampler()
 {
@@ -153,6 +305,8 @@ CAPI void sb_init()
 
 	InitFFmpegLibrary();
 
+	sb_tryInitializeSocket();
+
 	QTimer::singleShot(10, []{
 		configModel = new ConfigModel();
 		configModel->readConfig();
@@ -190,6 +344,8 @@ CAPI void sb_saveConfig()
 
 CAPI void sb_kill()
 {
+	sb_killSocket();
+
 	configModel->remObserver(modelObserver);
 	delete modelObserver; 
 	modelObserver = NULL;

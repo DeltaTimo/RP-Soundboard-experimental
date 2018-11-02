@@ -12,10 +12,8 @@
  * Copyright (c) 2008-2014 TeamSpeak Systems GmbH
  */
 
-#pragma comment (lib, "Ws2_32.lib")
 
-#include <WinSock2.h>
-#define _WINSOCK2API_
+//#define _WINSOCK2API_
 #define _WINSOCKAPI_
 
 #ifdef _WIN32
@@ -30,7 +28,6 @@
 #include <string.h>
 #include <assert.h>
 #include <map>
-#include <atomic>
 
 #include "plugin.h"
 #include "main.h"
@@ -48,9 +45,6 @@
 #endif
 
 #define PLUGIN_API_VERSION 22
-
-#define BUFLEN 512  //Max length of buffer
-#define PORT 35810  //The port on which to listen for incoming data
 
 static char* pluginID = NULL;
 
@@ -76,11 +70,7 @@ static int wcharToUtf8(const wchar_t* str, char** result) {
 extern "C"
 {
 
-WSADATA wsaData;
-HANDLE serverHandle;
-std::atomic<SOCKET> serverSocket;
-DWORD WINAPI ServerThread(LPVOID lpParam);
-static std::atomic<bool> shutdownPlugin = false;
+
 
 /* Unique name identifying this plugin */
 const char* ts3plugin_name() {
@@ -131,10 +121,8 @@ void ts3plugin_setFunctionPointers(const struct TS3Functions funcs) {
  */
 int ts3plugin_init() {
 	sb_init();
-
-	if (WSAStartup(MAKEWORD(2, 0), &wsaData) == 0) {
-		serverHandle = CreateThread(NULL, 0, ServerThread, NULL, 0, NULL);
-	}
+	
+	//serverHandle = CreateThread(NULL, 0, ServerThread, NULL, 0, NULL);
 
     return 0;  /* 0 = success, 1 = failure, -2 = failure but client will not show a "failed to load" warning */
 	/* -2 is a very special case and should only be used if a plugin displays a dialog (e.g. overlay) asking the user to disable
@@ -151,16 +139,6 @@ void ts3plugin_shutdown() {
 	 */
 	sb_kill();
 
-
-	shutdownPlugin = true;
-	DWORD threadResult = WaitForSingleObject(serverHandle, 250);
-	if (threadResult == WAIT_TIMEOUT) {
-		TerminateThread(serverHandle, 0);
-	}
-	if (serverSocket) {
-		closesocket(serverSocket);
-	}
-	WSACleanup();
 
 	/* Free pluginID if we registered it */
 	if(pluginID) 
@@ -517,48 +495,6 @@ void ts3plugin_onTalkStatusChangeEvent(uint64 serverConnectionHandlerID, int sta
 const char * getPluginID()
 {
 	return pluginID;
-}
-
-DWORD WINAPI ServerThread(LPVOID lpParam) {
-	struct sockaddr_in server, si_other;
-	int slen, recv_len;
-	char buf[BUFLEN];
-	//wsaData was already initialized.
-
-	slen = sizeof(si_other);
-
-	if ((serverSocket = socket(AF_INET, SOCK_DGRAM, 0)) == INVALID_SOCKET) {
-		printf("PluginCommandInterface: Failed to create socket: %d\n", WSAGetLastError());
-		return EXIT_FAILURE;
-	}
-	printf("PluginCommandInterface: Socket created.\n");
-
-	server.sin_family = AF_INET;
-	server.sin_addr.s_addr = INADDR_ANY;
-	server.sin_port = htons(PORT);
-
-	if (bind(serverSocket, (sockaddr*)&server, sizeof(server)) == SOCKET_ERROR) {
-		printf("PluginCommandInterface: Bind failed: %d\n", WSAGetLastError());
-		return EXIT_FAILURE;
-	}
-	printf("PluginCommandInterface: Bind done.\n");
-
-	while (!shutdownPlugin) {
-		printf("PluginCommandInterface: Receiving.\n");
-		memset(buf, '\0', BUFLEN);
-
-		if ((recv_len = recvfrom(serverSocket, buf, BUFLEN, 0, (sockaddr*)&si_other, &slen)) == SOCKET_ERROR) {
-			printf("PluginCommandInterface: recvfrom() failed: %d\n", WSAGetLastError());
-		}
-		else {
-			printf("Received packet from %s:%d\n", inet_ntoa(si_other.sin_addr), ntohs(si_other.sin_port));
-			printf("Data: %s\n", buf);
-			std::string path(buf);
-			sb_playFilePath(path);
-		}
-	}
-
-	return EXIT_SUCCESS;
 }
 
 } // extern "C"
